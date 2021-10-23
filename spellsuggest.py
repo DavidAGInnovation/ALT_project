@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
 import re
+from collections import Counter
+import numpy as np
+import time
+
 
 from trie import Trie
 
@@ -66,10 +70,51 @@ class SpellSuggester:
         }
 
         for vocab_term in self.vocabulary:
-            if (abs(len(term)-len(vocab_term)) <= threshold):
+            if (abs(len(term) - len(vocab_term)) <= threshold):
                 dist = function[distance](term, vocab_term, threshold)
                 if dist <= threshold:
                     results[vocab_term] = dist
+
+        return results
+
+    def suggest_opt(self, term, distance="levenshtein", threshold=2):
+        """Método para sugerir palabras similares siguiendo la tarea 3.
+
+                A completar.
+
+                Args:
+                    term (str): término de búsqueda.
+                    distance (str): algoritmo de búsqueda a utilizar
+                        {"levenshtein", "restricted", "intermediate"}.
+                    threshold (int): threshold para limitar la búsqueda
+                        puede utilizarse con los algoritmos de distancia mejorada de la tarea 2
+                        o filtrando la salida de las distancias de la tarea 2
+                """
+        assert distance in ["levenshtein", "restricted", "intermediate"]
+        results = {}  # diccionario termino:distancia
+        function = {
+            "levenshtein": dp_levenshtein_threshold,
+            "restricted": dp_restricted_damerau_threshold,
+            "intermediate": dp_intermediate_damerau_threshold
+        }
+
+        for vocab_term in self.vocabulary:
+            if (abs(len(term) - len(vocab_term)) <= threshold):
+                vocabulary = list(term+vocab_term)
+                vx = dict.fromkeys(vocabulary)
+                vy = dict.fromkeys(vocabulary)
+                
+                for l in vx:
+                    vx[l] = term.count(l)
+                    vy[l] = vocab_term.count(l)
+            
+                v = np.subtract(list(vx.values()), list(vy.values()))
+            
+                dif = max(np.sum(v[v>0]), -np.sum(v[v<0]))
+                if dif <= threshold:
+                    dist = function[distance](term, vocab_term, threshold)
+                    if dist <= threshold:
+                        results[vocab_term] = dist
 
         return results
 
@@ -85,11 +130,12 @@ class SpellSuggester:
                     for my_word in results:
                         return 0
 
+
 class TrieSpellSuggester(SpellSuggester):
     """
     Clase que implementa el método suggest para la búsqueda de términos y añade el trie
+    
     """
-
     def __init__(self, vocab_file_path):
         super().__init__(vocab_file_path)
         self.trie = Trie(self.vocabulary)
@@ -97,5 +143,15 @@ class TrieSpellSuggester(SpellSuggester):
 
 if __name__ == "__main__":
     spellsuggester = TrieSpellSuggester("./corpora/quijote.txt")
-    test(spellsuggester, "hola")
+    start = time.time()
+    print("hello")
+    spellsuggester.suggest_opt("suggest")
+    end = time.time()
+    print(end - start)
+    start2 = time.time()
+    print("hello")
+    spellsuggester.suggest("suggest")
+    end2 = time.time()
+    print(end2 - start2)
+    # spellsuggester.test(spellsuggester, "hola",2)
     # cuidado, la salida es enorme print(suggester.trie)
